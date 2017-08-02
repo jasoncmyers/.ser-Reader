@@ -3,7 +3,10 @@
 /SER reader/Debug
 /SER reader/Release
 *.ser
-*.vcproj
+*.vc?proj*
 *.user
 *.ncb
 *.suo
+*.*db
+*.sln
+*.htm
