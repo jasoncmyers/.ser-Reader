@@ -107,7 +107,7 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 	
 }
 
-int SerReader::ReadOffsetArrays()
+SerReader::ErrorCode SerReader::ReadOffsetArrays()
 {
 	// initialize the offset arrays
 	delete[] dataOffsets;
@@ -120,188 +120,184 @@ int SerReader::ReadOffsetArrays()
 		tagOffsets[i] = 0;
 	}
 
-	if(serFile->is_open())
-	{
-		int readSize = 0;
-		if(header.version == 0x210)
-			readSize = 4;
-		else if(header.version == 0x220)
-			readSize = 8;
-		else
-			return ERROR_UNKNOWN_FILE_VERSION;
-
-		serFile->seekg((streamoff)header.arrayOffset);
-		
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			serFile->read(reinterpret_cast<char*>(&dataOffsets[i]), readSize);	
-		}
-		for(int i = 0; i <header.totNumElem; i++)
-		{
-			serFile->read(reinterpret_cast<char*>(&tagOffsets[i]), readSize);
-		}
-
-		return ERROR_OK;
-	}
-	else
+	if(!serFile->is_open())
 		return ERROR_FILE_NOT_OPEN;
+	
+	int readSize = 0;
+	if(header.version == 0x210)
+		readSize = 4;
+	else if(header.version == 0x220)
+		readSize = 8;
+	else
+		return ERROR_UNKNOWN_FILE_VERSION;
+
+	serFile->seekg((streamoff)header.arrayOffset);
+	
+	for(int i = 0; i < header.totNumElem; i++)
+	{
+		serFile->read(reinterpret_cast<char*>(&dataOffsets[i]), readSize);	
+	}
+	for(int i = 0; i <header.totNumElem; i++)
+	{
+		serFile->read(reinterpret_cast<char*>(&tagOffsets[i]), readSize);
+	}
+
+	return ERROR_OK;	
 }
 
-int SerReader::Read2DDataSet(D2DataSet &dataSet, int setNum)
+SerReader::ErrorCode SerReader::Read2DDataSet(D2DataSet &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;
 	if(setNum < 0 || setNum > (header.totNumElem-1))
 		return ERROR_INDEX_OUT_OF_BOUNDS;
 
-	if(serFile->is_open())
-	{
-		//initialize data set
-		dataSet.arraySizeX = 0;
-		dataSet.arraySizeY = 0;
-		dataSet.calDeltaX = 0;
-		dataSet.calDeltaY = 0;
-		dataSet.calElementX = 0;
-		dataSet.calElementY = 0;
-		dataSet.calOffsetX = 0;
-		dataSet.calOffsetY = 0;
-		dataSet.dataType = 0;
-		delete[] dataSet.data;
-		dataSet.data = NULL;
-
-
-		// read in all the header info for the dataset
-		serFile->seekg((streamoff)dataOffsets[setNum]);
-		serFile->read(reinterpret_cast<char*>(&dataSet.calOffsetX), 8);
-		serFile->read(reinterpret_cast<char*>(&dataSet.calDeltaX), 8);
-		serFile->read(reinterpret_cast<char*>(&dataSet.calElementX), 4);
-		serFile->read(reinterpret_cast<char*>(&dataSet.calOffsetY), 8);
-		serFile->read(reinterpret_cast<char*>(&dataSet.calDeltaY), 8);
-		serFile->read(reinterpret_cast<char*>(&dataSet.calElementY), 4);
-		serFile->read(reinterpret_cast<char*>(&dataSet.dataType), 2);
-		serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeX), 4);
-		serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeY), 4);
-
-		long dataPts = dataSet.arraySizeX * dataSet.arraySizeY;
-		unsigned __int32 temp = 0;
-		signed __int32 temp2 = 0;
-		double temp3 = 0;
-
-		dataSet.data = new DataMember[dataPts];
-		switch(dataSet.dataType)
-		{
-		
-			case 1:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp = 0;
-					serFile->read(reinterpret_cast<char*>(&temp),1);
-					dataSet.data[j].uIntData = temp;
-				}
-				break;
-			case 2:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp = 0;
-					serFile->read(reinterpret_cast<char*>(&temp),2);
-					dataSet.data[j].uIntData = temp;
-				}
-				break;
-			case 3:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp = 0;
-					serFile->read(reinterpret_cast<char*>(&temp),4);
-					dataSet.data[j].uIntData = temp;
-				}
-				break;
-			case 4:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp2 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp2),1);
-					dataSet.data[j].sIntData = temp2;
-				}
-				break;
-			case 5:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp2 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp2),2);
-					dataSet.data[j].sIntData = temp2;
-				}
-				break;
-			case 6:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp2 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp2),4);
-					dataSet.data[j].sIntData = temp2;
-				}
-				break;
-			case 7:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp3 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp3),4);
-					dataSet.data[j].floatData = temp3;
-				}
-				break;
-			case 8:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp3 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp3),8);
-					dataSet.data[j].floatData = temp3;
-				}
-				break;
-			case 9:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp3 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp3),4);
-					dataSet.data[j].complexData.realPart = temp3;
-					temp3 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp3),4);
-					dataSet.data[j].complexData.imagPart = temp3;
-				}
-				break;
-			case 10:
-				for(int j = 0; j < dataPts; j++)
-				{
-					temp3 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp3),8);
-					dataSet.data[j].complexData.realPart = temp3;
-					temp3 = 0;
-					serFile->read(reinterpret_cast<char*>(&temp3),8);
-					dataSet.data[j].complexData.imagPart = temp3;
-				}
-				break;
-		} // end switch(dataType) statement
-
-	return ERROR_OK;
-	}
-	else
+	if(!serFile->is_open())
 		return ERROR_FILE_NOT_OPEN;
+	
+	//initialize data set
+	dataSet.arraySizeX = 0;
+	dataSet.arraySizeY = 0;
+	dataSet.calDeltaX = 0;
+	dataSet.calDeltaY = 0;
+	dataSet.calElementX = 0;
+	dataSet.calElementY = 0;
+	dataSet.calOffsetX = 0;
+	dataSet.calOffsetY = 0;
+	dataSet.dataType = 0;
+	delete[] dataSet.data;
+	dataSet.data = NULL;
+
+
+	// read in all the header info for the dataset
+	serFile->seekg((streamoff)dataOffsets[setNum]);
+	serFile->read(reinterpret_cast<char*>(&dataSet.calOffsetX), 8);
+	serFile->read(reinterpret_cast<char*>(&dataSet.calDeltaX), 8);
+	serFile->read(reinterpret_cast<char*>(&dataSet.calElementX), 4);
+	serFile->read(reinterpret_cast<char*>(&dataSet.calOffsetY), 8);
+	serFile->read(reinterpret_cast<char*>(&dataSet.calDeltaY), 8);
+	serFile->read(reinterpret_cast<char*>(&dataSet.calElementY), 4);
+	serFile->read(reinterpret_cast<char*>(&dataSet.dataType), 2);
+	serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeX), 4);
+	serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeY), 4);
+
+	long dataPts = dataSet.arraySizeX * dataSet.arraySizeY;
+	unsigned __int32 temp = 0;
+	signed __int32 temp2 = 0;
+	double temp3 = 0;
+
+	dataSet.data = new DataMember[dataPts];
+	switch(dataSet.dataType)
+	{
+	
+		case 1:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp = 0;
+				serFile->read(reinterpret_cast<char*>(&temp),1);
+				dataSet.data[j].uIntData = temp;
+			}
+			break;
+		case 2:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp = 0;
+				serFile->read(reinterpret_cast<char*>(&temp),2);
+				dataSet.data[j].uIntData = temp;
+			}
+			break;
+		case 3:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp = 0;
+				serFile->read(reinterpret_cast<char*>(&temp),4);
+				dataSet.data[j].uIntData = temp;
+			}
+			break;
+		case 4:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp2 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp2),1);
+				dataSet.data[j].sIntData = temp2;
+			}
+			break;
+		case 5:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp2 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp2),2);
+				dataSet.data[j].sIntData = temp2;
+			}
+			break;
+		case 6:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp2 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp2),4);
+				dataSet.data[j].sIntData = temp2;
+			}
+			break;
+		case 7:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp3 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp3),4);
+				dataSet.data[j].floatData = temp3;
+			}
+			break;
+		case 8:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp3 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp3),8);
+				dataSet.data[j].floatData = temp3;
+			}
+			break;
+		case 9:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp3 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp3),4);
+				dataSet.data[j].complexData.realPart = temp3;
+				temp3 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp3),4);
+				dataSet.data[j].complexData.imagPart = temp3;
+			}
+			break;
+		case 10:
+			for(int j = 0; j < dataPts; j++)
+			{
+				temp3 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp3),8);
+				dataSet.data[j].complexData.realPart = temp3;
+				temp3 = 0;
+				serFile->read(reinterpret_cast<char*>(&temp3),8);
+				dataSet.data[j].complexData.imagPart = temp3;
+			}
+			break;
+	} // end switch(dataType) statement
+	
+	return ERROR_OK;	
 }
 
 int SerReader::ReadAll2DDataSets(D2DataSet* &dataSets)
 {
-	if(header.dataTypeID != 0x4122)
-		return ERROR_DATA_TYPE_MISMATCH;
-	
-	if(serFile->is_open())
-	{
-		delete[] dataSets;
-		dataSets = new D2DataSet[header.totNumElem];
-		
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			Read2DDataSet(dataSets[i], i);
-		}
+if(header.dataTypeID != 0x4122)
+	return ERROR_DATA_TYPE_MISMATCH;
 
-		return ERROR_OK;
+if(serFile->is_open())
+{
+	delete[] dataSets;
+	dataSets = new D2DataSet[header.totNumElem];
+	
+	for(int i = 0; i < header.totNumElem; i++)
+	{
+		Read2DDataSet(dataSets[i], i);
 	}
+
+	return ERROR_OK;
+}
 	else
 		return ERROR_FILE_NOT_OPEN;
 }

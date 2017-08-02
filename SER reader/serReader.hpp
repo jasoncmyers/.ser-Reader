@@ -79,6 +79,9 @@ private:
 		DimHeader*	dimHeaders;
 	};
 
+	// Data members can belong to 10 different types, including different sizes of (un)signed int, float, and complex float values
+	// This union is memory inefficient but simplifies the data handling code considerably
+	// TODO: when exporting to vectors, this should be handled by type.
 	union DataMember
 	{
 		unsigned __int32 uIntData;
@@ -129,10 +132,10 @@ private:
 	__int64 *dataOffsets, *tagOffsets;
 
 	ErrorCode ReadHeaders();
-	int ReadOffsetArrays();
+	ErrorCode ReadOffsetArrays();
 	int Read1DDataSet(D1DataSet &dataSet, int setNum);
 	int ReadAll1DDataSets(D1DataSet* &dataSets);
-	int Read2DDataSet(D2DataSet &dataSet, int setNum);
+	ErrorCode Read2DDataSet(D2DataSet &dataSet, int setNum);
 	int ReadAll2DDataSets(D2DataSet* &dataSets);
 	int ReadAllTags(DataTag* &dataTags);
 
