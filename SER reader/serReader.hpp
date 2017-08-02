@@ -121,27 +121,31 @@ private:
 		float time;
 		double positionX;
 		double positionY;
-		__int16 weirdFinalTags;
+		__int16 weirdFinalTags;	// still have no idea what these do
 	};
 
 	std::fstream* serFile;
 	SerHeader header;
+	__int64 *dataOffsets, *tagOffsets;
 
-	int ReadHeaders();
-	int ReadOffsetArrays(__int64* &dataOffsets, __int64* &tagOffsets);
-	int Read1DDataSet(const __int64* dataOffsets, D1DataSet &dataSet, int setNum);
-	int ReadAll1DDataSets(const __int64* dataOffsets, D1DataSet* &dataSets);
-	int Read2DDataSet(const __int64* dataOffsets, D2DataSet &dataSet, int setNum);
-	int ReadAll2DDataSets(const __int64* dataOffsets, D2DataSet* &dataSets);
-	int ReadAllTags(const __int64* tagOffsets, DataTag* &dataTags);
+	ErrorCode ReadHeaders();
+	int ReadOffsetArrays();
+	int Read1DDataSet(D1DataSet &dataSet, int setNum);
+	int ReadAll1DDataSets(D1DataSet* &dataSets);
+	int Read2DDataSet(D2DataSet &dataSet, int setNum);
+	int ReadAll2DDataSets(D2DataSet* &dataSets);
+	int ReadAllTags(DataTag* &dataTags);
 
 	int WriteHeaders();
-	int WriteOffsetArray(__int64* &dataOffsets, __int64* &tagOffsets);
+	int WriteOffsetArray();
 	int WriteAll2DDataAndTags(D2DataSet* &dataSets, DataTag* &dataTags);
-	int Overwrite2DData(const __int64* dataOffsets, D2DataSet &dataSet, int setNum);
+	int Overwrite2DData(D2DataSet &dataSet, int setNum);
+
+	void CloseFile();
 
 public:
 	SerReader();
+	~SerReader();
 	bool SetFile(std::fstream* file);
 	std::vector<std::vector<int>> GetImage();
 	
