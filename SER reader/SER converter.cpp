@@ -4,21 +4,28 @@
 #include "stdafx.h"
 #include <iostream>
 #include <fstream>
-#include "serFiles.h"
+#include "serReader.hpp"
 
 using namespace std;
 
 SerHeader header;
 
 
-int _tmain(int argc, _TCHAR* argv[])
+int _tmain(int argc, char* argv[])
 {
 	fstream serFile;
 	fstream outFile;
+	
+
 	serFile.open("test.ser", ios::in | ios::binary);
 	outFile.open("testout.ser", ios::out | ios::in | ios::binary);
 	//serFile.open("test2.ser", ios::in | ios::binary);
 	//serFile.open("test3.ser", ios::in | ios::binary);
+	if(!outFile.is_open())
+	{
+		cout << "Could not open outfile\n";
+	}
+	
 		
 	if(serFile.is_open())
 	{
@@ -26,7 +33,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		ReadHeaders(&serFile, header);
 
 
-		cout << "Header structure:" << endl;
+	cout << "Header structure:" << endl;
 	cout << "------------------------------------" << endl;
 	cout << "Byte order: 0x" << hex << header.byteOrder << endl;
 	cout << "SeriesID: 0x" << hex << header.seriesID << endl;
@@ -142,12 +149,16 @@ int _tmain(int argc, _TCHAR* argv[])
 			if(tempVal < -1000) 
 			{
 				//cout << "Member " << dec << j << " of dataset " << i << " is clipped.  Reseting intensity to max.\n";
-				dataSet.data[j].sIntData = 32767;
+				dataSet.data[j].sIntData = 25000;
 			}
 		}
 	
 
-	Overwrite2DData(&outFile, header, dataOffs, dataSet, i);
+		int eCode = Overwrite2DData(&outFile, header, dataOffs, dataSet, i);
+		if(eCode == 0)
+			cout << "Overwrite on dataset " << i << " complete\n";
+		else
+			cout << "Overwrite failed on dataset " << i << ": error code " << eCode << "\n";
 	}
 
 
@@ -185,7 +196,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		cout << "Error opening file!\n\n";
 	}
 
-	cout << endl;
+	cout << "*** Complete***" << endl;
 	cin.get();
 	
 	return 0;
