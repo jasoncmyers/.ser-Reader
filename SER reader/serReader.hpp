@@ -128,7 +128,8 @@ public:
 		__int16 weirdFinalTags;	// still have no idea what these do
 	};
 
-	std::fstream* serFile;
+	std::ifstream* serFile;
+	std::ofstream* outFile;
 	SerHeader header;
 	std::vector<__int64> dataOffsets, tagOffsets;
 
@@ -142,11 +143,13 @@ public:
 
 	int WriteHeaders();
 	int WriteOffsetArray();
+	int WriteAllTags(std::vector<DataTag> &dataTags);
 	int WriteAllDataAndTags2D(DataSet2D* &dataSets, DataTag* &dataTags);
 	int OverwriteData2D(DataSet2D &dataSet, int setNum);
 
 public:
-	bool SetFile(std::fstream* file);
+	bool SetReadFile(std::ifstream* file);
+	bool SetWriteFile(std::ofstream* file);
 	std::vector<std::vector<int>> GetImage();
 	
 };	// end class SerReader
