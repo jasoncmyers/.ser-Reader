@@ -305,7 +305,9 @@ if(serFile->is_open())
 	
 	for(int i = 0; i < header.totNumElem; i++)
 	{
-		ReadDataSet2D(dataSets[i], i);
+		SerReader::DataSet2D tempData;
+		ReadDataSet2D(tempData, i);
+		dataSets.push_back(tempData);
 	}
 
 	return ERROR_OK;
@@ -463,7 +465,9 @@ int SerReader::ReadAllDataSets1D(std::vector<DataSet1D> &dataSets)
 		
 		for(int i = 0; i < header.totNumElem; i++)
 		{
-			ReadDataSet1D(dataSets[i], i);
+			SerReader::DataSet1D tempData;
+			ReadDataSet1D(tempData, i);
+			dataSets.push_back(tempData);
 		}
 
 		return ERROR_OK;

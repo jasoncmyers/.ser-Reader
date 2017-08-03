@@ -21,7 +21,7 @@ int _tmain(int argc, char* argv[])
 	SerReader reader;
 	
 
-	serFile.open("test.ser", ios::in | ios::binary);
+	serFile.open("test.ser", ios::in | ios::out | ios::binary);
 	outFile.open("testout.ser", ios::out | ios::binary);
 	//serFile.open("test2.ser", ios::in | ios::binary);
 	//serFile.open("test3.ser", ios::in | ios::binary);
@@ -104,15 +104,100 @@ int _tmain(int argc, char* argv[])
 			cout << "weird end flags = " << dataTags[i].weirdFinalTags << "\n";
 		}
 
+		cin.sync();
+		cin.ignore();
+
 		SerReader::DataSet2D dataSet;
 		test = reader.ReadDataSet2D(dataSet, 0);
 		if (test != 0)
 			cout << "Error with Read2DDataSet: " << test << endl;
 		
 		
+		cout <<"\n\nDataset values:\n";
+		cout << "calOffset X: " << dec << dataSet.calOffsetX << endl;
+		cout << "calDelta X: " << dec << dataSet.calDeltaX << endl;
+		cout << "calElem X: " << dataSet.calElementX << endl;
+		cout << "data type: " << dataSet.dataType << endl;
+		cout << "Array size: (" << dataSet.arraySizeX << ", " << dataSet.arraySizeY << ")\n";
+		
+		
+		
+		for (int i = 0; i < 5; i++)
+		{
+			for (int j = 0; j < 5; j++)
+			{
+				cout << "Pixel (" << i << ", "<< j<<") intensity = " << dec << (__int16)dataSet.data[i+j*dataSet.arraySizeX].sIntData << endl;
+			}
+		}
+
+		cin.sync();
+		cin.ignore();
+
+		/*
+	cout << "\n\n* * * Beginning full data readout * * *\n";
+	test = ReadAll2DDataSets(&serFile, header, dataOffs, dataSets);
+	if (test != 0)
+		cout << "Error with ReadAll2DDataSets: " << test << endl;
+	cout << "\n\n* * * Full data readout complete * * *\n\n";
+	
+
+	for(int i = 0; i < header.totNumElem; i++)
+	{
+		cout << "Dataset " << dec << i << " has weird seperator tag 0x" << hex << tags[i].weirdFinalTags << endl;
+	}
+	*/
+
+	
+
+	for(int i = 0; i < header.validNumElem; i++)
+	{
+		reader.ReadDataSet2D(dataSet, i);
+
+
+	
+		// Test wherein we actually modify the data to remove the clipped pixel values!!
+		if(i % 50 == 0)
+			cout << "\n\n* * * Beginning modifying pixel intensities of dataset " << dec << i << " * * *\n";
+		
+			int numPoints = dataSet.arraySizeX * dataSet.arraySizeY;
+			for(int j = 0; j < numPoints; j++)
+			{
+				int tempVal = (__int16)dataSet.data[j].sIntData;
+				if(tempVal < -1000) 
+				{
+					//cout << "Member " << dec << j << " of dataset " << i << " is clipped.  Reseting intensity to max.\n";
+					dataSet.data[j].sIntData = 25000;
+				}
+			}
+		
+
+			int eCode = reader.OverwriteData2D(dataSet, i);
+			if(eCode == 0 && (i % 50 == 0))
+				cout << "Overwrite on dataset " << i << " complete\n";
+			else if(eCode != 0)
+				cout << "Overwrite failed on dataset " << i << ": error code " << eCode << "\n";
+		}
+
+
+		// Test writing the data to a new file
+		/*
+		cout << "\n\n* * * Beginning output of test file * * *\n";
+		outFile.open("testout.ser", ios::out | ios::binary);
+
+		test = WriteHeaders(&outFile, header);
+		if (test != 0)
+			cout << "Error with WriteHeaders: " << test << endl;
+		test = WriteOffsetArray(&outFile, header, dataOffs, tagOffs);
+		if (test != 0)
+			cout << "Error with WriteOffsetArray: " << test << endl;
+		test = WriteAll2DDataAndTags(&outFile, header, dataSets, tags);
+		if (test != 0)
+			cout << "Error with WriteAll2DDataAndTags: " << test << endl;
+		cout << "* * * Test file output complete * * *\n\n";
+		*/	
 		serFile.close();
 		outFile.close();
-		
+
 	}
 	
 	else
@@ -120,8 +205,7 @@ int _tmain(int argc, char* argv[])
 		cout << "Error opening file!\n\n";
 	}
 
-	serFile.close();
-	outFile.close();
+	
 
 	cout << "*** Complete***" << endl;
 	cin.sync();
