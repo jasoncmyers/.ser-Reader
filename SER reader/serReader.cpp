@@ -18,12 +18,11 @@ SerReader::~SerReader() {
 }
 
 void SerReader::CloseFile() {
-	delete[] header.dimHeaders;
-	delete[] dataOffsets;
-	delete[] tagOffsets;
+	// TODO: clean this up when type conversion is done
+	//delete[] header.dimHeaders;
+	//delete[] dataOffsets;
+	//delete[] tagOffsets;
 	serFile = NULL;
-	dataOffsets = NULL;
-	tagOffsets = NULL;
 }
 
 
@@ -72,7 +71,7 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 		return ERROR_UNKNOWN_FILE_VERSION;
 	}
 
-	header.dimHeaders = new DimHeader[header.numDimensions];
+	header.dimHeaders.reserve(header.numDimensions);
 	for(int i=0; i < header.numDimensions; i++)
 	{
 		int stringLength = 0;
@@ -113,10 +112,10 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 SerReader::ErrorCode SerReader::ReadOffsetArrays()
 {
 	// initialize the offset arrays
-	delete[] dataOffsets;
-	delete[] tagOffsets;
-	dataOffsets = new __int64[header.totNumElem];
-	tagOffsets = new __int64[header.totNumElem];
+	dataOffsets.reserve(header.totNumElem);
+	tagOffsets.reserve(header.totNumElem);
+	std::fill(dataOffsets.begin(),dataOffsets.end(),0);
+	std::fill(tagOffsets.begin(),dataOffsets.end(),0);
 	for(int i = 0; i < header.totNumElem; i++)
 	{
 		dataOffsets[i] = 0;
@@ -148,7 +147,7 @@ SerReader::ErrorCode SerReader::ReadOffsetArrays()
 	return ERROR_OK;
 }
 
-SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
+SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -168,8 +167,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 	dataSet.calOffsetX = 0;
 	dataSet.calOffsetY = 0;
 	dataSet.dataType = 0;
-	delete[] dataSet.data;
-	dataSet.data = NULL;
+
 
 
 	// read in all the header info for the dataset
@@ -189,10 +187,10 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 	signed __int32 temp2 = 0;
 	double temp3 = 0;
 
-	dataSet.data = new DataMember[dataPts];
+	dataSet.data.reserve(dataPts);
 	switch(dataSet.dataType)
 	{
-	
+		// unsigned 8-bit integers
 		case 1:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -201,6 +199,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].uIntData = temp;
 			}
 			break;
+		// unsigned 16-bit integers
 		case 2:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -209,6 +208,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].uIntData = temp;
 			}
 			break;
+		// unsigned 32-bit integers
 		case 3:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -217,6 +217,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].uIntData = temp;
 			}
 			break;
+		// signed 8-bit integers
 		case 4:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -225,6 +226,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].sIntData = temp2;
 			}
 			break;
+		// signed 16-bit integers
 		case 5:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -233,6 +235,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].sIntData = temp2;
 			}
 			break;
+		// signed 32-bit integers
 		case 6:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -241,6 +244,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].sIntData = temp2;
 			}
 			break;
+		// 32-bit float
 		case 7:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -249,6 +253,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].floatData = temp3;
 			}
 			break;
+		// 64-bit float
 		case 8:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -257,6 +262,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].floatData = temp3;
 			}
 			break;
+		// 64-bit complex (32-bit real and imaginary floats)
 		case 9:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -268,6 +274,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 				dataSet.data[j].complexData.imagPart = temp3;
 			}
 			break;
+		// 128-bit complex (64-bit real and imaginary floats)
 		case 10:
 			for(int j = 0; j < dataPts; j++)
 			{
@@ -284,19 +291,18 @@ SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 	return ERROR_OK;	
 }
 
-int SerReader::ReadAll2DDataSets(DataSet2D* &dataSets)
+int SerReader::ReadAllDataSets2D(std::vector<DataSet2D> &dataSets)
 {
 if(header.dataTypeID != 0x4122)
 	return ERROR_DATA_TYPE_MISMATCH;
 
 if(serFile->is_open())
 {
-	delete[] dataSets;
-	dataSets = new DataSet2D[header.totNumElem];
+	dataSets.reserve(header.totNumElem);
 	
 	for(int i = 0; i < header.totNumElem; i++)
 	{
-		Read2DDataSet(dataSets[i], i);
+		ReadDataSet2D(dataSets[i], i);
 	}
 
 	return ERROR_OK;
@@ -305,7 +311,7 @@ if(serFile->is_open())
 		return ERROR_FILE_NOT_OPEN;
 }
 
-SerReader::ErrorCode SerReader::Read1DDataSet(DataSet1D &dataSet, int setNum)
+SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4120)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -320,8 +326,7 @@ SerReader::ErrorCode SerReader::Read1DDataSet(DataSet1D &dataSet, int setNum)
 		dataSet.calElement = 0;
 		dataSet.calOffset = 0;
 		dataSet.dataType = 0;
-		dataSet.data = NULL;
-
+		
 
 		// read in all the header info for the dataset
 		serFile->seekg((streamoff)dataOffsets[setNum]);
@@ -335,10 +340,10 @@ SerReader::ErrorCode SerReader::Read1DDataSet(DataSet1D &dataSet, int setNum)
 		signed __int32 temp2 = 0;
 		double temp3 = 0;
 
-		dataSet.data = new DataMember[dataSet.arrayLength];
+		dataSet.data.reserve(dataSet.arrayLength);
 		switch(dataSet.dataType)
 		{
-		
+			// see ReadDataSet2D for documenation of dataType values
 			case 1:
 				for(int j = 0; j < dataSet.arrayLength; j++)
 				{
@@ -433,19 +438,18 @@ SerReader::ErrorCode SerReader::Read1DDataSet(DataSet1D &dataSet, int setNum)
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::ReadAll1DDataSets(DataSet1D* &dataSets)
+int SerReader::ReadAllDataSets1D(std::vector<DataSet1D> &dataSets)
 {
 	if(header.dataTypeID != 0x4120)
 		return ERROR_DATA_TYPE_MISMATCH;
 	
 	if(serFile->is_open())
 	{
-		delete[] dataSets;
-		dataSets = new DataSet1D[header.totNumElem];
+		dataSets.reserve(header.totNumElem);
 		
 		for(int i = 0; i < header.totNumElem; i++)
 		{
-			Read1DDataSet(dataSets[i], i);
+			ReadDataSet1D(dataSets[i], i);
 		}
 
 		return ERROR_OK;
@@ -455,17 +459,17 @@ int SerReader::ReadAll1DDataSets(DataSet1D* &dataSets)
 }
 
 
-int SerReader::ReadAllTags(DataTag* &dataTags)
+int SerReader::ReadAllTags(std::vector<DataTag> &dataTags)
 {
 	if(serFile->is_open())
 	{
-		delete[] dataTags;
-		dataTags = new DataTag[header.totNumElem];
+		dataTags.reserve(header.totNumElem);
 
 		__int16 tagTypeID = 0;
 		float timeStamp = 0;
 		double posX = 0;
 		double posY = 0;
+		__int16 finalTags = 0;
 
 		for(int i = 0; i < header.totNumElem; i++)
 		{
@@ -479,12 +483,13 @@ int SerReader::ReadAllTags(DataTag* &dataTags)
 				serFile->read(reinterpret_cast<char*>(&posX), 8);
 				serFile->read(reinterpret_cast<char*>(&posY), 8);
 			}
-			serFile->read(reinterpret_cast<char*>(&dataTags[i].weirdFinalTags), 2);
+			serFile->read(reinterpret_cast<char*>(&finalTags), 2);
 
 			dataTags[i].tagTypeID = tagTypeID;
 			dataTags[i].time = timeStamp;
 			dataTags[i].positionX = posX;
 			dataTags[i].positionY = posY;
+			dataTags[i].weirdFinalTags = finalTags;
 		}
 		return ERROR_OK;
 	}
@@ -583,7 +588,7 @@ int SerReader::WriteOffsetArray()
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::WriteAll2DDataAndTags(DataSet2D* &dataSet, DataTag* &dataTags)
+int SerReader::WriteAllDataAndTags2D(DataSet2D* &dataSet, DataTag* &dataTags)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -697,7 +702,7 @@ int SerReader::WriteAll2DDataAndTags(DataSet2D* &dataSet, DataTag* &dataTags)
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::Overwrite2DData(DataSet2D &dataSet, int setNum)
+int SerReader::OverwriteData2D(DataSet2D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;

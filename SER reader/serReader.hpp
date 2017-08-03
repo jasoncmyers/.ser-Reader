@@ -76,7 +76,7 @@ private:
 		__int64 arrayOffset;
 		__int32 numDimensions;
 
-		DimHeader*	dimHeaders;
+		std::vector<DimHeader>	dimHeaders;
 	};
 
 	// Data members can belong to 10 different types, including different sizes of (un)signed int, float, and complex float values
@@ -101,7 +101,7 @@ private:
 		__int32 calElement;
 		__int16 dataType;
 		__int32 arrayLength;
-		DataMember* data;
+		std::vector<DataMember> data;
 	};
 
 	struct DataSet2D
@@ -115,7 +115,7 @@ private:
 		__int16 dataType;
 		__int32 arraySizeX;
 		__int32 arraySizeY;
-		DataMember* data;
+		std::vector<DataMember> data;
 	};
 
 	struct DataTag
@@ -129,20 +129,20 @@ private:
 
 	std::fstream* serFile;
 	SerHeader header;
-	__int64 *dataOffsets, *tagOffsets;
+	std::vector<__int64> dataOffsets, tagOffsets;
 
 	ErrorCode ReadHeaders();
 	ErrorCode ReadOffsetArrays();
-	ErrorCode Read1DDataSet(DataSet1D &dataSet, int setNum);
-	int ReadAll1DDataSets(DataSet1D* &dataSets);
-	ErrorCode Read2DDataSet(DataSet2D &dataSet, int setNum);
-	int ReadAll2DDataSets(DataSet2D* &dataSets);
-	int ReadAllTags(DataTag* &dataTags);
+	ErrorCode ReadDataSet1D(DataSet1D &dataSet, int setNum);
+	int ReadAllDataSets1D(std::vector<DataSet1D> &dataSets);
+	ErrorCode ReadDataSet2D(DataSet2D &dataSet, int setNum);
+	int ReadAllDataSets2D(std::vector<DataSet2D> &dataSets);
+	int ReadAllTags(std::vector<DataTag> &dataTags);
 
 	int WriteHeaders();
 	int WriteOffsetArray();
-	int WriteAll2DDataAndTags(DataSet2D* &dataSets, DataTag* &dataTags);
-	int Overwrite2DData(DataSet2D &dataSet, int setNum);
+	int WriteAllDataAndTags2D(DataSet2D* &dataSets, DataTag* &dataTags);
+	int OverwriteData2D(DataSet2D &dataSet, int setNum);
 
 	void CloseFile();
 
