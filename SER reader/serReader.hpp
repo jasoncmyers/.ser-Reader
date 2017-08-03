@@ -19,7 +19,8 @@ private:
 	
 	// binary header structures (need to interact with binary data, so fix the packing at the 16 bit level)
 	#pragma pack(push, 2)
-
+// TODO: remove this, just here for testing
+public:
 	struct BinHeader
 	{
 		__int16 byteOrder;
@@ -144,11 +145,7 @@ private:
 	int WriteAllDataAndTags2D(DataSet2D* &dataSets, DataTag* &dataTags);
 	int OverwriteData2D(DataSet2D &dataSet, int setNum);
 
-	void CloseFile();
-
 public:
-	SerReader();
-	~SerReader();
 	bool SetFile(std::fstream* file);
 	std::vector<std::vector<int>> GetImage();
 	

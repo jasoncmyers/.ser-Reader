@@ -6,29 +6,14 @@
 using namespace std;
 
 // TODO: get rid of this, just for test compilation
-void main(void)
+/*void main(void)
 {
 
-}
-
-SerReader::SerReader() : serFile(NULL) {};
-
-SerReader::~SerReader() {
-	CloseFile();
-}
-
-void SerReader::CloseFile() {
-	// TODO: clean this up when type conversion is done
-	//delete[] header.dimHeaders;
-	//delete[] dataOffsets;
-	//delete[] tagOffsets;
-	serFile = NULL;
-}
-
+}*/
 
 bool SerReader::SetFile(std::fstream *file) {
-	CloseFile();
 	if(!file->is_open()) {
+		serFile = NULL;
 		return false;
 	}
 
