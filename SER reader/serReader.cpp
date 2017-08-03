@@ -39,7 +39,6 @@ bool SerReader::SetFile(std::fstream *file) {
 }
 
 
-// returns 0 or error number
 SerReader::ErrorCode SerReader::ReadHeaders() 
 {
 	if(!serFile->is_open())
@@ -84,14 +83,18 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 		header.dimHeaders[i].dimSize = dimHead.dimSize;
 
 		serFile->read(reinterpret_cast<char*>(&stringLength), 4);
-		header.dimHeaders[i].description = new char[stringLength+1];
-		serFile->read(header.dimHeaders[i].description, stringLength);
-		header.dimHeaders[i].description[stringLength] = '\0';
-
+		char *buffer = new char[stringLength+1];
+		serFile->read(buffer, stringLength);
+		buffer[stringLength] = '\0';
+		header.dimHeaders[i].description = buffer;
+		delete[] buffer;
+		
 		serFile->read(reinterpret_cast<char*>(&stringLength), 4);
-		header.dimHeaders[i].unitName = new char[stringLength+1];
-		serFile->read(header.dimHeaders[i].unitName, stringLength);
-		header.dimHeaders[i].unitName[stringLength] = '\0';
+		buffer = new char[stringLength+1];
+		serFile->read(buffer, stringLength);
+		buffer[stringLength] = '\0';
+		header.dimHeaders[i].unitName = buffer;
+		delete[] buffer;
 	}
 
 	header.byteOrder = binHead.byteOrder;
@@ -142,10 +145,10 @@ SerReader::ErrorCode SerReader::ReadOffsetArrays()
 		serFile->read(reinterpret_cast<char*>(&tagOffsets[i]), readSize);
 	}
 
-	return ERROR_OK;	
+	return ERROR_OK;
 }
 
-SerReader::ErrorCode SerReader::Read2DDataSet(D2DataSet &dataSet, int setNum)
+SerReader::ErrorCode SerReader::Read2DDataSet(DataSet2D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -281,7 +284,7 @@ SerReader::ErrorCode SerReader::Read2DDataSet(D2DataSet &dataSet, int setNum)
 	return ERROR_OK;	
 }
 
-int SerReader::ReadAll2DDataSets(D2DataSet* &dataSets)
+int SerReader::ReadAll2DDataSets(DataSet2D* &dataSets)
 {
 if(header.dataTypeID != 0x4122)
 	return ERROR_DATA_TYPE_MISMATCH;
@@ -289,7 +292,7 @@ if(header.dataTypeID != 0x4122)
 if(serFile->is_open())
 {
 	delete[] dataSets;
-	dataSets = new D2DataSet[header.totNumElem];
+	dataSets = new DataSet2D[header.totNumElem];
 	
 	for(int i = 0; i < header.totNumElem; i++)
 	{
@@ -302,7 +305,7 @@ if(serFile->is_open())
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::Read1DDataSet(D1DataSet &dataSet, int setNum)
+SerReader::ErrorCode SerReader::Read1DDataSet(DataSet1D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4120)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -430,7 +433,7 @@ int SerReader::Read1DDataSet(D1DataSet &dataSet, int setNum)
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::ReadAll1DDataSets(D1DataSet* &dataSets)
+int SerReader::ReadAll1DDataSets(DataSet1D* &dataSets)
 {
 	if(header.dataTypeID != 0x4120)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -438,7 +441,7 @@ int SerReader::ReadAll1DDataSets(D1DataSet* &dataSets)
 	if(serFile->is_open())
 	{
 		delete[] dataSets;
-		dataSets = new D1DataSet[header.totNumElem];
+		dataSets = new DataSet1D[header.totNumElem];
 		
 		for(int i = 0; i < header.totNumElem; i++)
 		{
@@ -536,14 +539,13 @@ int SerReader::WriteHeaders()
 			dimHead.dimSize = header.dimHeaders[i].dimSize;
 			serFile->write(reinterpret_cast<char*>(&dimHead), sizeof(BinDimHeader));
 
-			int stringLength = 0;
-			stringLength = strlen(header.dimHeaders[i].description);
+			int stringLength = header.dimHeaders[i].description.length();
 			serFile->write(reinterpret_cast<char*>(&stringLength), 4);
-			serFile->write(header.dimHeaders[i].description, stringLength);
+			serFile->write(header.dimHeaders[i].description.c_str(), stringLength);
 
-			stringLength = strlen(header.dimHeaders[i].unitName);
+			stringLength =header.dimHeaders[i].unitName.length();
 			serFile->write(reinterpret_cast<char*>(&stringLength), 4);
-			serFile->write(header.dimHeaders[i].unitName, stringLength);
+			serFile->write(header.dimHeaders[i].unitName.c_str(), stringLength);
 		}
 		return ERROR_OK;
 	}
@@ -581,7 +583,7 @@ int SerReader::WriteOffsetArray()
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::WriteAll2DDataAndTags(D2DataSet* &dataSet, DataTag* &dataTags)
+int SerReader::WriteAll2DDataAndTags(DataSet2D* &dataSet, DataTag* &dataTags)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -695,7 +697,7 @@ int SerReader::WriteAll2DDataAndTags(D2DataSet* &dataSet, DataTag* &dataTags)
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::Overwrite2DData(D2DataSet &dataSet, int setNum)
+int SerReader::Overwrite2DData(DataSet2D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;

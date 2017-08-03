@@ -59,8 +59,8 @@ private:
 		double calOffset;
 		double calDelta;
 		__int32 calElement;
-		char* description;
-		char* unitName;
+		std::string description;
+		std::string unitName;
 	};
 
 	struct SerHeader
@@ -94,7 +94,7 @@ private:
 		} complexData;
 	};
 
-	struct D1DataSet
+	struct DataSet1D
 	{
 		double calOffset;
 		double calDelta;
@@ -104,7 +104,7 @@ private:
 		DataMember* data;
 	};
 
-	struct D2DataSet
+	struct DataSet2D
 	{
 		double calOffsetX;
 		double calDeltaX;
@@ -133,16 +133,16 @@ private:
 
 	ErrorCode ReadHeaders();
 	ErrorCode ReadOffsetArrays();
-	int Read1DDataSet(D1DataSet &dataSet, int setNum);
-	int ReadAll1DDataSets(D1DataSet* &dataSets);
-	ErrorCode Read2DDataSet(D2DataSet &dataSet, int setNum);
-	int ReadAll2DDataSets(D2DataSet* &dataSets);
+	ErrorCode Read1DDataSet(DataSet1D &dataSet, int setNum);
+	int ReadAll1DDataSets(DataSet1D* &dataSets);
+	ErrorCode Read2DDataSet(DataSet2D &dataSet, int setNum);
+	int ReadAll2DDataSets(DataSet2D* &dataSets);
 	int ReadAllTags(DataTag* &dataTags);
 
 	int WriteHeaders();
 	int WriteOffsetArray();
-	int WriteAll2DDataAndTags(D2DataSet* &dataSets, DataTag* &dataTags);
-	int Overwrite2DData(D2DataSet &dataSet, int setNum);
+	int WriteAll2DDataAndTags(DataSet2D* &dataSets, DataTag* &dataTags);
+	int Overwrite2DData(DataSet2D &dataSet, int setNum);
 
 	void CloseFile();
 
