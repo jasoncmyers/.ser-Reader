@@ -18,7 +18,7 @@ bool SerReader::SetFile(std::fstream *file) {
 	}
 
 	serFile = file;
-	ErrorCode errCode = ReadHeaders();
+	//ErrorCode errCode = ReadHeaders();
 	return true;
 }
 
@@ -56,29 +56,34 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 		return ERROR_UNKNOWN_FILE_VERSION;
 	}
 
+	header.dimHeaders.clear();
 	header.dimHeaders.reserve(header.numDimensions);
+	
 	for(int i=0; i < header.numDimensions; i++)
 	{
+		SerReader::DimHeader tempDimHeader;
 		int stringLength = 0;
 		serFile->read(reinterpret_cast<char*>(&dimHead), sizeof(BinDimHeader));
-		header.dimHeaders[i].calDelta = dimHead.calDelta;
-		header.dimHeaders[i].calElement = dimHead.calElement;
-		header.dimHeaders[i].calOffset = dimHead.calOffset;
-		header.dimHeaders[i].dimSize = dimHead.dimSize;
+		tempDimHeader.calDelta = dimHead.calDelta;
+		tempDimHeader.calElement = dimHead.calElement;
+		tempDimHeader.calOffset = dimHead.calOffset;
+		tempDimHeader.dimSize = dimHead.dimSize;
 
 		serFile->read(reinterpret_cast<char*>(&stringLength), 4);
 		char *buffer = new char[stringLength+1];
 		serFile->read(buffer, stringLength);
 		buffer[stringLength] = '\0';
-		header.dimHeaders[i].description = buffer;
+		tempDimHeader.description = buffer;
 		delete[] buffer;
 		
 		serFile->read(reinterpret_cast<char*>(&stringLength), 4);
 		buffer = new char[stringLength+1];
 		serFile->read(buffer, stringLength);
 		buffer[stringLength] = '\0';
-		header.dimHeaders[i].unitName = buffer;
+		tempDimHeader.unitName = buffer;
 		delete[] buffer;
+
+		header.dimHeaders.push_back(tempDimHeader);
 	}
 
 	header.byteOrder = binHead.byteOrder;
@@ -97,15 +102,10 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 SerReader::ErrorCode SerReader::ReadOffsetArrays()
 {
 	// initialize the offset arrays
+	dataOffsets.clear();
+	tagOffsets.clear();
 	dataOffsets.reserve(header.totNumElem);
 	tagOffsets.reserve(header.totNumElem);
-	std::fill(dataOffsets.begin(),dataOffsets.end(),0);
-	std::fill(tagOffsets.begin(),dataOffsets.end(),0);
-	for(int i = 0; i < header.totNumElem; i++)
-	{
-		dataOffsets[i] = 0;
-		tagOffsets[i] = 0;
-	}
 
 	if(!serFile->is_open())
 		return ERROR_FILE_NOT_OPEN;
@@ -120,13 +120,18 @@ SerReader::ErrorCode SerReader::ReadOffsetArrays()
 
 	serFile->seekg((streamoff)header.arrayOffset);
 	
+	__int64 tempOffset;
 	for(int i = 0; i < header.totNumElem; i++)
 	{
-		serFile->read(reinterpret_cast<char*>(&dataOffsets[i]), readSize);	
+		tempOffset = 0;
+		serFile->read(reinterpret_cast<char*>(&tempOffset), readSize);
+		dataOffsets.push_back(tempOffset);
 	}
 	for(int i = 0; i <header.totNumElem; i++)
 	{
-		serFile->read(reinterpret_cast<char*>(&tagOffsets[i]), readSize);
+		tempOffset = 0;
+		serFile->read(reinterpret_cast<char*>(&tempOffset), readSize);
+		tagOffsets.push_back(tempOffset);
 	}
 
 	return ERROR_OK;
@@ -168,10 +173,13 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 	serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeY), 4);
 
 	long dataPts = dataSet.arraySizeX * dataSet.arraySizeY;
+	
 	unsigned __int32 temp = 0;
 	signed __int32 temp2 = 0;
 	double temp3 = 0;
+	SerReader::DataMember tempData;
 
+	dataSet.data.clear();
 	dataSet.data.reserve(dataPts);
 	switch(dataSet.dataType)
 	{
@@ -181,7 +189,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp = 0;
 				serFile->read(reinterpret_cast<char*>(&temp),1);
-				dataSet.data[j].uIntData = temp;
+				tempData.uIntData = temp;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// unsigned 16-bit integers
@@ -190,7 +199,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp = 0;
 				serFile->read(reinterpret_cast<char*>(&temp),2);
-				dataSet.data[j].uIntData = temp;
+				tempData.uIntData = temp;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// unsigned 32-bit integers
@@ -199,7 +209,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp = 0;
 				serFile->read(reinterpret_cast<char*>(&temp),4);
-				dataSet.data[j].uIntData = temp;
+				tempData.uIntData = temp;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// signed 8-bit integers
@@ -208,7 +219,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp2 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp2),1);
-				dataSet.data[j].sIntData = temp2;
+				tempData.sIntData = temp2;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// signed 16-bit integers
@@ -217,7 +229,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp2 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp2),2);
-				dataSet.data[j].sIntData = temp2;
+				tempData.sIntData = temp2;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// signed 32-bit integers
@@ -226,7 +239,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp2 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp2),4);
-				dataSet.data[j].sIntData = temp2;
+				tempData.sIntData = temp2;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// 32-bit float
@@ -235,7 +249,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp3 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp3),4);
-				dataSet.data[j].floatData = temp3;
+				tempData.floatData = temp3;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// 64-bit float
@@ -244,7 +259,8 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp3 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp3),8);
-				dataSet.data[j].floatData = temp3;
+				tempData.floatData = temp3;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// 64-bit complex (32-bit real and imaginary floats)
@@ -253,10 +269,11 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp3 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp3),4);
-				dataSet.data[j].complexData.realPart = temp3;
+				tempData.complexData.realPart = temp3;
 				temp3 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp3),4);
-				dataSet.data[j].complexData.imagPart = temp3;
+				tempData.complexData.imagPart = temp3;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 		// 128-bit complex (64-bit real and imaginary floats)
@@ -265,10 +282,11 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			{
 				temp3 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp3),8);
-				dataSet.data[j].complexData.realPart = temp3;
+				tempData.complexData.realPart = temp3;
 				temp3 = 0;
 				serFile->read(reinterpret_cast<char*>(&temp3),8);
-				dataSet.data[j].complexData.imagPart = temp3;
+				tempData.complexData.imagPart = temp3;
+				dataSet.data.push_back(tempData);
 			}
 			break;
 	} // end switch(dataType) statement
@@ -324,6 +342,7 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 		unsigned __int32 temp = 0;
 		signed __int32 temp2 = 0;
 		double temp3 = 0;
+		SerReader::DataMember tempData;
 
 		dataSet.data.reserve(dataSet.arrayLength);
 		switch(dataSet.dataType)
@@ -334,7 +353,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp = 0;
 					serFile->read(reinterpret_cast<char*>(&temp),1);
-					dataSet.data[j].uIntData = temp;
+					tempData.uIntData = temp;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 2:
@@ -342,7 +362,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp = 0;
 					serFile->read(reinterpret_cast<char*>(&temp),2);
-					dataSet.data[j].uIntData = temp;
+					tempData.uIntData = temp;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 3:
@@ -350,7 +371,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp = 0;
 					serFile->read(reinterpret_cast<char*>(&temp),4);
-					dataSet.data[j].uIntData = temp;
+					tempData.uIntData = temp;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 4:
@@ -358,7 +380,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp2 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp2),1);
-					dataSet.data[j].sIntData = temp2;
+					tempData.sIntData = temp2;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 5:
@@ -366,7 +389,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp2 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp2),2);
-					dataSet.data[j].sIntData = temp2;
+					tempData.sIntData = temp2;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 6:
@@ -374,7 +398,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp2 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp2),4);
-					dataSet.data[j].sIntData = temp2;
+					tempData.sIntData = temp2;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 7:
@@ -382,7 +407,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp3 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp3),4);
-					dataSet.data[j].floatData = temp3;
+					tempData.floatData = temp3;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 8:
@@ -390,7 +416,8 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp3 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp3),8);
-					dataSet.data[j].floatData = temp3;
+					tempData.floatData = temp3;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 9:
@@ -398,10 +425,11 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp3 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp3),4);
-					dataSet.data[j].complexData.realPart = temp3;
+					tempData.complexData.realPart = temp3;
 					temp3 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp3),4);
-					dataSet.data[j].complexData.imagPart = temp3;
+					tempData.complexData.imagPart = temp3;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 			case 10:
@@ -409,10 +437,11 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 				{
 					temp3 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp3),8);
-					dataSet.data[j].complexData.realPart = temp3;
+					tempData.complexData.realPart = temp3;
 					temp3 = 0;
 					serFile->read(reinterpret_cast<char*>(&temp3),8);
-					dataSet.data[j].complexData.imagPart = temp3;
+					tempData.complexData.imagPart = temp3;
+					dataSet.data.push_back(tempData);
 				}
 				break;
 		}
@@ -448,6 +477,7 @@ int SerReader::ReadAllTags(std::vector<DataTag> &dataTags)
 {
 	if(serFile->is_open())
 	{
+		dataTags.clear();
 		dataTags.reserve(header.totNumElem);
 
 		__int16 tagTypeID = 0;
@@ -470,11 +500,15 @@ int SerReader::ReadAllTags(std::vector<DataTag> &dataTags)
 			}
 			serFile->read(reinterpret_cast<char*>(&finalTags), 2);
 
-			dataTags[i].tagTypeID = tagTypeID;
-			dataTags[i].time = timeStamp;
-			dataTags[i].positionX = posX;
-			dataTags[i].positionY = posY;
-			dataTags[i].weirdFinalTags = finalTags;
+			DataTag tempDataTag;
+			
+			tempDataTag.tagTypeID = tagTypeID;
+			tempDataTag.time = timeStamp;
+			tempDataTag.positionX = posX;
+			tempDataTag.positionY = posY;
+			tempDataTag.weirdFinalTags = finalTags;
+
+			dataTags.push_back(tempDataTag);
 		}
 		return ERROR_OK;
 	}
