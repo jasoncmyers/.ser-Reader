@@ -1,9 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 #include "serReader.hpp"
-
-// TODO: remove, just for testing
-void main(void) { }
 
 bool SerReader::SetReadFile(std::ifstream *file) {
 	if(!file->is_open()) {
@@ -39,7 +37,6 @@ bool SerReader::SetWriteFile(std::ofstream *file) {
 		std::cout << "WriteOffsetArrays() error: " << errCode << "\n";
 	return true;
 }
-
 
 
 SerReader::ErrorCode SerReader::ReadHeaders() 
@@ -111,8 +108,6 @@ SerReader::ErrorCode SerReader::ReadHeaders()
 	header.version = binHead.version;
 
 	return ERROR_OK;
-	
-	
 }
 
 SerReader::ErrorCode SerReader::ReadOffsetArrays()
@@ -152,6 +147,7 @@ SerReader::ErrorCode SerReader::ReadOffsetArrays()
 	return ERROR_OK;
 }
 
+
 SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
@@ -172,8 +168,6 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 	dataSet.calOffsetX = 0;
 	dataSet.calOffsetY = 0;
 	dataSet.dataType = 0;
-
-
 
 	// read in all the header info for the dataset
 	serFile->seekg((std::streamoff)dataOffsets[setNum]);
@@ -312,28 +306,6 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 	
 	return ERROR_OK;	
 }
-
-/*int SerReader::ReadAllDataSets2D(std::vector<DataSet2D> &dataSets)
-{
-if(header.dataTypeID != 0x4122)
-	return ERROR_DATA_TYPE_MISMATCH;
-
-if(serFile->is_open())
-{
-	dataSets.reserve(header.totNumElem);
-	
-	for(int i = 0; i < header.totNumElem; i++)
-	{
-		SerReader::DataSet2D tempData;
-		ReadDataSet2D(tempData, i);
-		dataSets.push_back(tempData);
-	}
-
-	return ERROR_OK;
-}
-	else
-		return ERROR_FILE_NOT_OPEN;
-}*/
 
 SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 {
@@ -476,71 +448,7 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 		return ERROR_FILE_NOT_OPEN;
 }
 
-/* int SerReader::ReadAllDataSets1D(std::vector<DataSet1D> &dataSets)
-{
-	if(header.dataTypeID != 0x4120)
-		return ERROR_DATA_TYPE_MISMATCH;
-	
-	if(serFile->is_open())
-	{
-		dataSets.reserve(header.totNumElem);
-		
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			SerReader::DataSet1D tempData;
-			ReadDataSet1D(tempData, i);
-			dataSets.push_back(tempData);
-		}
 
-		return ERROR_OK;
-	}
-	else
-		return ERROR_FILE_NOT_OPEN;
-} */
-
-
-int SerReader::ReadAllTags(std::vector<DataTag> &dataTags)
-{
-	if(serFile->is_open())
-	{
-		dataTags.clear();
-		dataTags.reserve(header.totNumElem);
-
-		__int16 tagTypeID = 0;
-		float timeStamp = 0;
-		double posX = 0;
-		double posY = 0;
-		__int16 finalTags = 0;
-
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			serFile->seekg((std::streamoff)tagOffsets[i]);
-			serFile->read(reinterpret_cast<char*>(&tagTypeID), 2);
-			if(tagTypeID != header.tagTypeID)
-				return ERROR_DATA_TYPE_MISMATCH;
-			serFile->read(reinterpret_cast<char*>(&timeStamp), 4);
-			if(header.tagTypeID == 0x4142)
-			{
-				serFile->read(reinterpret_cast<char*>(&posX), 8);
-				serFile->read(reinterpret_cast<char*>(&posY), 8);
-			}
-			serFile->read(reinterpret_cast<char*>(&finalTags), 2);
-
-			DataTag tempDataTag;
-			
-			tempDataTag.tagTypeID = tagTypeID;
-			tempDataTag.time = timeStamp;
-			tempDataTag.positionX = posX;
-			tempDataTag.positionY = posY;
-			tempDataTag.weirdFinalTags = finalTags;
-
-			dataTags.push_back(tempDataTag);
-		}
-		return ERROR_OK;
-	}
-	else
-		return ERROR_FILE_NOT_OPEN;
-}
 
 SerReader::ErrorCode SerReader::ReadDataTag(DataTag &tag, int setNum) 
 {
@@ -671,41 +579,6 @@ SerReader::ErrorCode SerReader::WriteOffsetArrays()
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::WriteAllTags(std::vector<DataTag> &dataTags)
-{
-	if(outFile->is_open())
-	{
-		__int16 tagTypeID = 0;
-		float timeStamp = 0;
-		double posX = 0;
-		double posY = 0;
-		__int16 finalTags = 0;
-
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			std::cout << "Writing Tag #" << i << " at 0x" << std::hex << tagOffsets[i] << std::dec << "\n";
-			
-			tagTypeID = dataTags[i].tagTypeID;
-			timeStamp = dataTags[i].time;
-			posX = dataTags[i].positionX;
-			posY = dataTags[i].positionY;
-			finalTags = dataTags[i].weirdFinalTags;
-			
-			outFile->seekp((std::streamoff)tagOffsets[i]);
-			outFile->write(reinterpret_cast<char*>(&tagTypeID), 2);
-			outFile->write(reinterpret_cast<char*>(&timeStamp), 4);
-			if(header.tagTypeID == 0x4142)
-			{
-				outFile->write(reinterpret_cast<char*>(&posX), 8);
-				outFile->write(reinterpret_cast<char*>(&posY), 8);
-			}
-			outFile->write(reinterpret_cast<char*>(&finalTags), 2);
-		}
-		return ERROR_OK;
-	}
-	else
-		return ERROR_FILE_NOT_OPEN;
-}
 
 SerReader::ErrorCode SerReader::WriteDataTag(SerReader::DataTag tag, int setNum) 
 {
@@ -732,121 +605,8 @@ SerReader::ErrorCode SerReader::WriteDataTag(SerReader::DataTag tag, int setNum)
 	return ERROR_OK;
 }
 
-int SerReader::WriteAllDataAndTags2D(DataSet2D* &dataSet, DataTag* &dataTags)
-{
-	if(header.dataTypeID != 0x4122)
-		return ERROR_DATA_TYPE_MISMATCH;
-	
-	if(outFile->is_open())
-	{
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].calOffsetX), 8);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].calDeltaX), 8);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].calElementX), 4);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].calOffsetY), 8);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].calDeltaY), 8);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].calElementY), 4);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].dataType), 2);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].arraySizeX), 4);
-			outFile->write(reinterpret_cast<char*>(&dataSet[i].arraySizeY), 4);
 
-			long dataPts = dataSet[i].arraySizeX * dataSet[i].arraySizeY;
-			
-			switch(dataSet[i].dataType)
-			{
-		
-				case 1:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].uIntData),1);
-					}
-					break;
-				case 2:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].uIntData),2);
-					}
-					break;
-				case 3:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].uIntData),4);
-					}
-					break;
-				case 4:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].sIntData),1);
-					}
-					break;
-				case 5:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].sIntData),2);
-					}
-					break;
-				case 6:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].sIntData),4);
-					}
-					break;
-				case 7:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].floatData),4);
-					}
-					break;
-				case 8:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].floatData),8);
-					}	
-					break;
-				case 9:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].complexData.realPart),4);
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].complexData.imagPart),4);
-					}
-					break;
-				case 10:
-					for(int j = 0; j < dataPts; j++)
-					{
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].complexData.realPart),8);
-						outFile->write(reinterpret_cast<char*>(&dataSet[i].data[j].complexData.imagPart),8);
-					}
-					break;
-			}
-			
-			// Write tag data immediately after the main data set
-			outFile->write(reinterpret_cast<char*>(&dataTags[i].tagTypeID), 2);
-			outFile->write(reinterpret_cast<char*>(&dataTags[i].time), 4);
-			if(header.tagTypeID == 0x4142)
-			{
-				outFile->write(reinterpret_cast<char*>(&dataTags[i].positionX), 8);
-				outFile->write(reinterpret_cast<char*>(&dataTags[i].positionY), 8);
-			}
-
-			// Insert the spacer found between each Tag and the start of the next data point
-			// It starts at A7 3E, then the value decements (but not necessarily by one) after each row length
-			// not really sure how it works yet, but just filling in A7 3E seems to work ok.
-			//__int16 temp = 0x3EA7;
-			// try something new
-			//__int16 temp = 0x3EA7 - (int)(i/15);
-			//cout << "Temp spacer = 0x" << hex << temp << dec << endl;
-			
-
-			outFile->write(reinterpret_cast<char*>(&dataTags[i].weirdFinalTags), 2);
-		}  // end of for loop
-	return ERROR_OK;
-	}
-	else	// if file is not open
-		return ERROR_FILE_NOT_OPEN;
-}
-
-int SerReader::OverwriteData2D(DataSet2D &dataSet, int setNum)
+SerReader::ErrorCode SerReader::OverwriteData2D(const DataSet2D &dataSet, int setNum)
 {
 	if(header.dataTypeID != 0x4122)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -856,15 +616,15 @@ int SerReader::OverwriteData2D(DataSet2D &dataSet, int setNum)
 
 	outFile->seekp((std::streamoff)dataOffsets[setNum]);
 	
-	outFile->write(reinterpret_cast<char*>(&dataSet.calOffsetX), 8);
-	outFile->write(reinterpret_cast<char*>(&dataSet.calDeltaX), 8);
-	outFile->write(reinterpret_cast<char*>(&dataSet.calElementX), 4);
-	outFile->write(reinterpret_cast<char*>(&dataSet.calOffsetY), 8);
-	outFile->write(reinterpret_cast<char*>(&dataSet.calDeltaY), 8);
-	outFile->write(reinterpret_cast<char*>(&dataSet.calElementY), 4);
-	outFile->write(reinterpret_cast<char*>(&dataSet.dataType), 2);
-	outFile->write(reinterpret_cast<char*>(&dataSet.arraySizeX), 4);
-	outFile->write(reinterpret_cast<char*>(&dataSet.arraySizeY), 4);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calOffsetX), 8);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calDeltaX), 8);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calElementX), 4);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calOffsetY), 8);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calDeltaY), 8);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calElementY), 4);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.dataType), 2);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.arraySizeX), 4);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.arraySizeY), 4);
 
 	long dataPts = dataSet.arraySizeX * dataSet.arraySizeY;
 		
@@ -874,63 +634,63 @@ int SerReader::OverwriteData2D(DataSet2D &dataSet, int setNum)
 	case 1:
 		for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].uIntData),1);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].uIntData),1);
 			}
 			break;
 	case 2:
 		for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].uIntData),2);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].uIntData),2);
 			}
 			break;
 	case 3:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].uIntData),4);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].uIntData),4);
 			}
 			break;
 	case 4:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].sIntData),1);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].sIntData),1);
 			}
 			break;
 	case 5:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].sIntData),2);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].sIntData),2);
 			}
 			break;
 	case 6:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].sIntData),4);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].sIntData),4);
 			}
 			break;
 	case 7:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].floatData),4);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].floatData),4);
 			}
 			break;
 	case 8:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].floatData),8);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].floatData),8);
 			}	
 			break;
 	case 9:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].complexData.realPart),4);
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].complexData.imagPart),4);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.realPart),4);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.imagPart),4);
 			}
 			break;
 	case 10:
 			for(int j = 0; j < dataPts; j++)
 			{
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].complexData.realPart),8);
-				outFile->write(reinterpret_cast<char*>(&dataSet.data[j].complexData.imagPart),8);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.realPart),8);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.imagPart),8);
 			}
 			break;
 	}
@@ -939,6 +699,128 @@ int SerReader::OverwriteData2D(DataSet2D &dataSet, int setNum)
 
 	return ERROR_OK;
 }
+
+SerReader::ErrorCode SerReader::OverwriteData1D(const DataSet1D &dataSet, int setNum)
+{
+	if(header.dataTypeID != 0x4120)
+		return ERROR_DATA_TYPE_MISMATCH;
+
+	if(!serFile->is_open())
+		return ERROR_FILE_NOT_OPEN;
+
+	outFile->seekp((std::streamoff)dataOffsets[setNum]);
+	
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calOffset), 8);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calDelta), 8);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.calElement), 4);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.dataType), 2);
+	outFile->write(reinterpret_cast<const char*>(&dataSet.arrayLength), 4);
+
+	switch(dataSet.dataType)
+	{
+	
+	case 1:
+		for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].uIntData),1);
+			}
+			break;
+	case 2:
+		for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].uIntData),2);
+			}
+			break;
+	case 3:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].uIntData),4);
+			}
+			break;
+	case 4:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].sIntData),1);
+			}
+			break;
+	case 5:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].sIntData),2);
+			}
+			break;
+	case 6:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].sIntData),4);
+			}
+			break;
+	case 7:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].floatData),4);
+			}
+			break;
+	case 8:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].floatData),8);
+			}	
+			break;
+	case 9:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.realPart),4);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.imagPart),4);
+			}
+			break;
+	case 10:
+			for(int j = 0; j < dataSet.arrayLength; j++)
+			{
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.realPart),8);
+				outFile->write(reinterpret_cast<const char*>(&dataSet.data[j].complexData.imagPart),8);
+			}
+			break;
+	}
+
+	WriteDataTag(dataSet.dataTag, setNum);
+
+	return ERROR_OK;
+}
+
+
+void SerReader::Get2DDataSet(SerReader::DataSet2D &dataSet, int setIndex)
+{
+	SerReader::ErrorCode errCode = ReadDataSet2D(dataSet, setIndex);
+	if(errCode != 0) {
+		throw std::runtime_error("Get2DDataSet failed with error = " + errCode);
+	}
+}
+
+void SerReader::Get1DDataSet(SerReader::DataSet1D &dataSet, int setIndex)
+{
+	SerReader::ErrorCode errCode = ReadDataSet1D(dataSet, setIndex);
+	if(errCode != 0) {
+		throw std::runtime_error("Get1DDataSet failed with error = " + errCode);
+	}
+}
+bool SerReader::Write2DDataSet(const SerReader::DataSet2D &dataSet, int setIndex)
+{
+	SerReader::ErrorCode errCode = OverwriteData2D(dataSet, setIndex);
+	if(errCode != 0) {
+		throw std::runtime_error("Write2DDataSet failed with error = " + errCode);
+	}
+}
+bool SerReader::Write1DDataSet(const SerReader::DataSet1D &dataSet, int setIndex)
+{
+	SerReader::ErrorCode errCode = OverwriteData1D(dataSet, setIndex);
+	if(errCode != 0) {
+		throw std::runtime_error("Write1DDataSet failed with error = " + errCode);
+	}
+}
+
+
+
 
 // Header accessors
 int SerReader::GetDataFileVersion()
@@ -962,3 +844,134 @@ std::string SerReader::GetDimensionDescription(int dimensionIndex)
 std::string SerReader::GetDimensionUnits(int dimensionIndex) 
 { return header.dimHeaders[dimensionIndex].unitName; }
 
+/* Wrapper class: possible future feature 
+// The DataSet utility subclass:
+// simple accessors
+double SerReader::DataSet::CalibrationOffsetX()
+{ return calOffsetX; }
+double SerReader::DataSet::CalibrationDeltaX()
+{ return calDeltaX; }
+int SerReader::DataSet::CalibrationElementX()
+{ return calElementX; }
+double SerReader::DataSet::CalibrationOffsetY()
+{ return calOffsetY; }
+double SerReader::DataSet::CalibrationDeltaY()
+{ return calDeltaY; }
+int SerReader::DataSet::CalibrationElementY()
+{ return calElementY; }
+int SerReader::DataSet::ArraySizeX()
+{ return arraySizeX; }
+int SerReader::DataSet::ArraySizeY()
+{ return arraySizeY; }
+float SerReader::DataSet::TimeStamp()
+{ return dataTag.time; }
+double SerReader::DataSet::PositionX()
+{ return dataTag.positionX; }
+double SerReader::DataSet::PositionY()
+{ return dataTag.positionY; }
+
+SerReader::DataTypeEnum SerReader::DataSet::DataType() 
+{ 
+	switch (dataTag.tagTypeID) 
+	{
+	case 1:
+	case 2:
+	case 3:
+		return SerReader::UNSIGNED_INT;
+	case 4:
+	case 5:
+	case 6:
+		return SerReader::SIGNED_INT;
+	case 7:
+	case 8:
+		return SerReader::FLOAT;
+	case 9:
+	case 10:
+		return SerReader::COMPLEX;
+	default:
+		return SerReader::INVALID_DATA_TYPE;
+	}
+}
+
+// data retrieval methods
+std::vector<unsigned int> SerReader::DataSet::GetUnsignedIntData()
+{
+	if(dataTag.tagTypeID < 1 || dataTag.tagTypeID > 3)
+		throw std::logic_error("GetUnsignedIntData() called for non unsigned int data set");
+
+
+
+}
+
+
+std::vector<unsigned int> SerReader::DataSet::GetUnsignedIntDataAs2D()
+{
+	if(dataTag.tagTypeID < 1 || dataTag.tagTypeID > 3)
+		throw std::logic_error("GetUnsignedIntData() called for non unsigned int data set");
+
+}
+
+
+std::vector<int> SerReader::DataSet::GetSignedIntData()
+{
+	if(dataTag.tagTypeID < 4 || dataTag.tagTypeID > 6)
+		throw std::logic_error("GetSignedIntData() called for non signed int data set");
+
+}
+
+
+std::vector<int> SerReader::DataSet::GetSignedIntDataAs2D()
+{
+	if(dataTag.tagTypeID < 4 || dataTag.tagTypeID > 6)
+		throw std::logic_error("GetSignedIntData() called for non signed int data set");
+
+}
+
+
+std::vector<double> SerReader::DataSet::GetFloatData()
+{
+	if(dataTag.tagTypeID < 7 || dataTag.tagTypeID > 8)
+		throw std::logic_error("GetFloatData() called for non float data set");
+
+}
+
+
+std::vector<double> SerReader::DataSet::GetFloatDataAs2D()
+{
+	if(dataTag.tagTypeID < 7 || dataTag.tagTypeID > 8)
+		throw std::logic_error("GetFloatData() called for non float data set");
+
+}
+
+
+std::vector<double> SerReader::DataSet::GetRealPartData()
+{
+	if(dataTag.tagTypeID < 9 || dataTag.tagTypeID > 10)
+		throw std::logic_error("GetRealPartData() called for non complex data set");
+
+}
+
+
+std::vector<double> SerReader::DataSet::GetRealPartDataAs2D()
+{
+	if(dataTag.tagTypeID < 9 || dataTag.tagTypeID > 10)
+		throw std::logic_error("GetRealPartData() called for non complex data set");
+
+}
+
+
+std::vector<double> SerReader::DataSet::GetImagPartData()
+{
+	if(dataTag.tagTypeID < 9 || dataTag.tagTypeID > 10)
+		throw std::logic_error("GetImagPartData() called for non complex data set");
+
+}
+
+
+std::vector<double> SerReader::DataSet::GetImagPartDataAs2D()
+{
+	if(dataTag.tagTypeID < 9 || dataTag.tagTypeID > 10)
+		throw std::logic_error("GetImagPartData() called for non complex data set");
+
+}
+*/

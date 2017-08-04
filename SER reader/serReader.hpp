@@ -6,22 +6,30 @@
 #include <vector>
 
 class SerReader {
+public:
+	enum DataTypeEnum 
+	{
+		SIGNED_INT,
+		UNSIGNED_INT,
+		FLOAT,
+		COMPLEX,
+		INVALID_DATA_TYPE
+	};
 
 private:
 	enum ErrorCode
-{
-	ERROR_OK = 0,
-	ERROR_FILE_NOT_OPEN = 1,
-	ERROR_UNKNOWN_FILE_VERSION = 2,
-	ERROR_DATA_TYPE_MISMATCH = 3,
-	ERROR_INDEX_OUT_OF_BOUNDS = 4
-};
+	{
+		ERROR_OK = 0,
+		ERROR_FILE_NOT_OPEN,
+		ERROR_UNKNOWN_FILE_VERSION,
+		ERROR_DATA_TYPE_MISMATCH,
+		ERROR_INDEX_OUT_OF_BOUNDS
+	};
+
+
 	
 	// binary header structures (need to interact with binary data, so fix the packing at the 16 bit level)
 	#pragma pack(push, 2)
-// TODO: remove this, just here for testing
-//private:
-public:
 	struct BinHeader
 	{
 		__int16 byteOrder;
@@ -82,9 +90,7 @@ public:
 	};
 
 	// Data members can belong to 10 different types, including different sizes of (un)signed int, float, and complex float values
-	// This union is memory inefficient but simplifies the data handling code considerably
-	// TODO: when exporting to vectors, this should be handled by type.
-public:
+	// This union is not the most memory efficent solution but it simplifies the data handling code considerably
 	union DataMemberUnion
 	{
 		unsigned __int32 uIntData;
@@ -97,6 +103,8 @@ public:
 		} complexData;
 	};
 
+// for now, these utility structs are public.  They should be wrapped in a class, but that's a massive amount of code for litte gain.
+public: 
 	struct DataTag
 	{
 		__int16 tagTypeID;
@@ -132,13 +140,20 @@ public:
 		std::vector<DataMemberUnion> data;
 	};
 
-	// publically accessible class to wrap the various data types
+
+/*
+
+// DataSet class to wrap the currently public structs above.  Currently a work in progress.
+
+public:
 	class DataSet
 	{
+		// allow a SerReader to create and populate DataSet objects
+		friend class SerReader;
+	
 	private:
-		DataTag infoTag;
 		double calOffsetX;
-		double CallOffsetY;
+		double calDeltaX;
 		__int32 calElementX;
 		double calOffsetY;
 		double calDeltaY;
@@ -146,7 +161,35 @@ public:
 		__int16 dataType;
 		__int32 arraySizeX;
 		__int32 arraySizeY;
+		DataTag dataTag;
+		std::vector<DataMemberUnion> data;
+
+	public:
+		double CalibrationOffsetX();
+		double CalibrationDeltaX();
+		int CalibrationElementX();
+		double CalibrationOffsetY();
+		double CalibrationDeltaY();
+		int CalibrationElementY();
+		int ArraySizeX();
+		int ArraySizeY();
+		float TimeStamp();
+		double PositionX();
+		double PositionY();
+		DataTypeEnum DataType();
+		// DataTypes are 
+		std::vector<unsigned int> GetUnsignedIntData();
+		std::vector<unsigned int> GetUnsignedIntDataAs2D();
+		std::vector<int> GetSignedIntData();
+		std::vector<int> GetSignedIntDataAs2D();
+		std::vector<double> GetFloatData();
+		std::vector<double> GetFloatDataAs2D();
+		std::vector<double> GetRealPartData();
+		std::vector<double> GetRealPartDataAs2D();
+		std::vector<double> GetImagPartData();
+		std::vector<double> GetImagPartDataAs2D();
 	};
+	*/
 
 private:
 	std::ifstream* serFile;
@@ -159,23 +202,25 @@ private:
 	ErrorCode ReadHeaders();
 	ErrorCode ReadOffsetArrays();
 	ErrorCode ReadDataSet1D(DataSet1D &dataSet, int setNum);
-	//int ReadAllDataSets1D(std::vector<DataSet1D> &dataSets);
 	ErrorCode ReadDataSet2D(DataSet2D &dataSet, int setNum);
-	//int ReadAllDataSets2D(std::vector<DataSet2D> &dataSets);
-	int ReadAllTags(std::vector<DataTag> &dataTags);
 	ErrorCode ReadDataTag(DataTag &tag, int setNum);
 
 	ErrorCode WriteHeaders();
 	ErrorCode WriteOffsetArrays();
-	int WriteAllTags(std::vector<DataTag> &dataTags);
 	ErrorCode WriteDataTag(DataTag tag, int setNum);
-	int WriteAllDataAndTags2D(DataSet2D* &dataSets, DataTag* &dataTags);
-	int OverwriteData2D(DataSet2D &dataSet, int setNum);
+	ErrorCode OverwriteData2D(const DataSet2D &dataSet, int setNum);
+	ErrorCode OverwriteData1D(const DataSet1D &dataSet, int setNum);
 
 public:
 	// the Set___File methods also read/write the header and data/tag offset information
 	bool SetReadFile(std::ifstream* file);
 	bool SetWriteFile(std::ofstream* file);
+	void Get2DDataSet(SerReader::DataSet2D &dataSet, int setIndex);
+	void Get1DDataSet(SerReader::DataSet1D &dataSet, int setIndex);
+	bool Write2DDataSet(const SerReader::DataSet2D &dataSet, int setIndex);
+	bool Write1DDataSet(const SerReader::DataSet1D &dataSet, int setIndex);
+
+
 
 	// accessor functions for the file header
 	int GetDataFileVersion();
