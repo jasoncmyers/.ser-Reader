@@ -148,12 +148,11 @@ public:
 		__int32 arraySizeY;
 	};
 
-//private:
+private:
 	std::ifstream* serFile;
 	std::ofstream* outFile;
 	SerHeader header;
 	std::vector<__int64> dataOffsets, tagOffsets;
-	bool outFileHeadersTagsWritten;
 
 	// ReadHeaders and ReadOffsetArrays need to be called in order and with a new file.  They do not seek.
 	// Other commands will seek, but require the offset arrays to be populated first.
@@ -166,17 +165,31 @@ public:
 	int ReadAllTags(std::vector<DataTag> &dataTags);
 	ErrorCode ReadDataTag(DataTag &tag, int setNum);
 
-	int WriteHeaders();
-	int WriteOffsetArray();
+	ErrorCode WriteHeaders();
+	ErrorCode WriteOffsetArrays();
 	int WriteAllTags(std::vector<DataTag> &dataTags);
 	ErrorCode WriteDataTag(DataTag tag, int setNum);
 	int WriteAllDataAndTags2D(DataSet2D* &dataSets, DataTag* &dataTags);
 	int OverwriteData2D(DataSet2D &dataSet, int setNum);
 
 public:
+	// the Set___File methods also read/write the header and data/tag offset information
 	bool SetReadFile(std::ifstream* file);
 	bool SetWriteFile(std::ofstream* file);
-	//std::vector<std::vector<
+
+	// accessor functions for the file header
+	int GetDataFileVersion();
+	int GetNumberElements();
+	int GetNumberValidElements();
+	int GetNumberDataDimensions();
+	// all dimension headers are zero indexed
+	int GetDimensionSize(int dimensionIndex);
+	double GetDimensionCalibrationOffset(int dimensionIndex);
+	double GetDimensionCalibrationDelta(int dimensionIndex);
+	int GetDimensionCalibrationElement(int dimensionIndex);
+	std::string GetDimensionDescription(int dimensionIndex);
+	std::string GetDimensionUnits(int dimensionIndex);
+
 	
 };	// end class SerReader
 

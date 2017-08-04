@@ -36,24 +36,16 @@ int _tmain(int argc, char* argv[])
 		cout << "File opened\n\n";
 		reader.SetReadFile(&serFile);
 		reader.SetWriteFile(&outFile);
-		//reader.ReadHeaders();
 
-		SerReader::SerHeader header = reader.header;
-
-
-		cout << "Header structure:" << endl;
+		cout << "Header info:" << endl;
 		cout << "------------------------------------" << endl;
-		cout << "Byte order: 0x" << hex << header.byteOrder << endl;
-		cout << "SeriesID: 0x" << hex << header.seriesID << endl;
-		cout << "Series version: 0x" << hex << header.version << endl;
-		cout << "Data type ID: 0x" << hex << header.dataTypeID << endl;
-		cout << "Tag type ID: 0x" << hex << header.tagTypeID << endl;
-		cout << "Total # of elements: " << dec << header.totNumElem << endl;
-		cout << "# of valid elements: " << dec << header.validNumElem << endl;
-		cout << "Array absolute offset: 0x" << hex << header.arrayOffset << endl;
-		cout << "Numer of dimensions of series: " << dec << header.numDimensions << endl << endl;
+		cout << "Series version: 0x" << hex << reader.GetDataFileVersion() << dec << "\n";
+		cout << "Numer of dimensions: " << dec << reader.GetNumberDataDimensions() << "\n";
+		cout << "Total # of elements: " << reader.GetNumberElements() << "\n";
+		cout << "# of valid elements: " << dec << reader.GetNumberValidElements() << "\n\n";
+		
 
-		if(header.numDimensions >= 1)
+		/*if(header.numDimensions >= 1)
 		{
 			cout << "Dimension header follows: " << endl;
 			cout << "------------------------------------" << endl;
@@ -75,7 +67,7 @@ int _tmain(int argc, char* argv[])
 			cout << "Calibration element: " << header.dimHeaders[1].calElement << endl;
 			cout << "Dimension description: " << header.dimHeaders[1].description << endl;
 			cout << "Unit description: " << header.dimHeaders[1].unitName << endl;
-		}
+		}*/
 		cin.sync();
 		cin.ignore();
 
@@ -84,13 +76,13 @@ int _tmain(int argc, char* argv[])
 		if(test != 0)
 			cout << "Error with ReadOffsetArrays: " << test << endl;*/
 
-		int test;
+		/*int test;
 		for(int i = 0; i < header.totNumElem; i++) {
 			cout << "DataOffset " << dec << i << " = " << hex << reader.dataOffsets[i] << "; TagOffset " << dec << i << " = " << hex << reader.tagOffsets[i] << endl;
 		}
 		
 		cin.sync();
-		cin.ignore();
+		cin.ignore();*/
 
 
 		
@@ -141,18 +133,17 @@ int _tmain(int argc, char* argv[])
 		cin.ignore();
 
 		cout << "\n\n* * * Beginning output of test file * * *\n";
-		test = reader.WriteHeaders();
+		/*test = reader.WriteHeaders();
 		if (test != 0)
 			cout << "Error with WriteHeaders: " << test << endl;
-		test = reader.WriteOffsetArray();
+		test = reader.WriteOffsetArrays();
 		if (test != 0)
-			cout << "Error with WriteOffsetArray: " << test << endl;
+			cout << "Error with WriteOffsetArrays: " << test << endl;*/
 		
 
 		for(int i = 0; i < header.validNumElem; i++)
 		{
 			reader.ReadDataSet2D(dataSet, i);
-
 
 		
 			// Test wherein we actually modify the data to remove the clipped pixel values!!
