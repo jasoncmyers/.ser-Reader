@@ -9,11 +9,19 @@ bool SerReader::SetReadFile(std::ifstream *file) {
 	}
 
 	serFile = file;
-	//ErrorCode errCode = ReadHeaders();
+	ErrorCode errCode = ReadHeaders();
+	if(errCode != 0)
+		std::cout << "ReadHeaders() error: " << errCode << "\n";	// TODO: real error handling here.  Exceptions?
+
+	errCode = ReadOffsetArrays();
+	if(errCode != 0)
+		std::cout << "ReadOffsetArrays() error: " << errCode << "\n";
+
 	return true;
 }
 
 bool SerReader::SetWriteFile(std::ofstream *file) {
+	outFileHeadersTagsWritten = false;
 	if(!file->is_open()) {
 		outFile = NULL;
 		return false;
@@ -117,8 +125,7 @@ SerReader::ErrorCode SerReader::ReadOffsetArrays()
 	else
 		return ERROR_UNKNOWN_FILE_VERSION;
 
-	serFile->seekg((std::streamoff)header.arrayOffset);
-	
+	serFile->seekg((std::streamoff) header.arrayOffset);
 	__int64 tempOffset;
 	for(int i = 0; i < header.totNumElem; i++)
 	{
@@ -171,13 +178,15 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 	serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeX), 4);
 	serFile->read(reinterpret_cast<char*>(&dataSet.arraySizeY), 4);
 
+	
 	long dataPts = dataSet.arraySizeX * dataSet.arraySizeY;
 	
 	unsigned __int32 temp = 0;
 	signed __int32 temp2 = 0;
 	double temp3 = 0;
-	SerReader::DataMember tempData;
+	SerReader::DataMemberUnion tempData;
 
+	// read data elements
 	dataSet.data.clear();
 	dataSet.data.reserve(dataPts);
 	switch(dataSet.dataType)
@@ -289,11 +298,13 @@ SerReader::ErrorCode SerReader::ReadDataSet2D(DataSet2D &dataSet, int setNum)
 			}
 			break;
 	} // end switch(dataType) statement
+
+	ReadDataTag(dataSet.dataTag, setNum);	
 	
 	return ERROR_OK;	
 }
 
-int SerReader::ReadAllDataSets2D(std::vector<DataSet2D> &dataSets)
+/*int SerReader::ReadAllDataSets2D(std::vector<DataSet2D> &dataSets)
 {
 if(header.dataTypeID != 0x4122)
 	return ERROR_DATA_TYPE_MISMATCH;
@@ -313,7 +324,7 @@ if(serFile->is_open())
 }
 	else
 		return ERROR_FILE_NOT_OPEN;
-}
+}*/
 
 SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 {
@@ -340,11 +351,14 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 		serFile->read(reinterpret_cast<char*>(&dataSet.dataType), 2);
 		serFile->read(reinterpret_cast<char*>(&dataSet.arrayLength), 4);
 
+		ReadDataTag(dataSet.dataTag, setNum);
+		
 		unsigned __int32 temp = 0;
 		signed __int32 temp2 = 0;
 		double temp3 = 0;
-		SerReader::DataMember tempData;
 
+		// read in the individual data elements
+		SerReader::DataMemberUnion tempData;
 		dataSet.data.reserve(dataSet.arrayLength);
 		switch(dataSet.dataType)
 		{
@@ -453,7 +467,7 @@ SerReader::ErrorCode SerReader::ReadDataSet1D(DataSet1D &dataSet, int setNum)
 		return ERROR_FILE_NOT_OPEN;
 }
 
-int SerReader::ReadAllDataSets1D(std::vector<DataSet1D> &dataSets)
+/* int SerReader::ReadAllDataSets1D(std::vector<DataSet1D> &dataSets)
 {
 	if(header.dataTypeID != 0x4120)
 		return ERROR_DATA_TYPE_MISMATCH;
@@ -473,7 +487,7 @@ int SerReader::ReadAllDataSets1D(std::vector<DataSet1D> &dataSets)
 	}
 	else
 		return ERROR_FILE_NOT_OPEN;
-}
+} */
 
 
 int SerReader::ReadAllTags(std::vector<DataTag> &dataTags)
@@ -517,6 +531,44 @@ int SerReader::ReadAllTags(std::vector<DataTag> &dataTags)
 	}
 	else
 		return ERROR_FILE_NOT_OPEN;
+}
+
+SerReader::ErrorCode SerReader::ReadDataTag(DataTag &tag, int setNum) 
+{
+	if(!serFile->is_open())
+		return ERROR_FILE_NOT_OPEN;
+	
+	__int16 tagTypeID = 0;
+	float timeStamp = 0;
+	double posX = 0;
+	double posY = 0;
+	__int16 finalTags = 0;
+
+	serFile->seekg((std::streamoff)tagOffsets[setNum]);
+	serFile->read(reinterpret_cast<char*>(&tagTypeID), 2);
+	if(tagTypeID != header.tagTypeID)
+		return ERROR_DATA_TYPE_MISMATCH;
+	serFile->read(reinterpret_cast<char*>(&timeStamp), 4);
+	if(header.tagTypeID == 0x4142)
+	{
+		serFile->read(reinterpret_cast<char*>(&posX), 8);
+		serFile->read(reinterpret_cast<char*>(&posY), 8);
+	}
+	else if(header.tagTypeID != 0x4152)
+	{
+		return ERROR_UNKNOWN_FILE_VERSION;
+	}
+	// TODO: are the final tags there in version 0x4152?
+	serFile->read(reinterpret_cast<char*>(&finalTags), 2);
+
+	tag.tagTypeID = tagTypeID;
+	tag.time = timeStamp;
+	tag.positionX = posX;
+	tag.positionY = posY;
+	tag.weirdFinalTags = finalTags;
+
+	return ERROR_OK;
+
 }
 
 int SerReader::WriteHeaders() 
@@ -593,7 +645,7 @@ int SerReader::WriteOffsetArray()
 			return ERROR_UNKNOWN_FILE_VERSION;
 
 		// Not sure if this is needed.  The file *should* be at the correct place, if the headers were properly written
-		//file->seekp((streamoff)header.arrayOffset);
+		//file->seekp((streampos)header.arrayOffset);
 		
 		for(int i = 0; i < header.totNumElem; i++)
 		{
@@ -622,6 +674,8 @@ int SerReader::WriteAllTags(std::vector<DataTag> &dataTags)
 
 		for(int i = 0; i < header.totNumElem; i++)
 		{
+			std::cout << "Writing Tag #" << i << " at 0x" << std::hex << tagOffsets[i] << std::dec << "\n";
+			
 			tagTypeID = dataTags[i].tagTypeID;
 			timeStamp = dataTags[i].time;
 			posX = dataTags[i].positionX;
@@ -642,6 +696,31 @@ int SerReader::WriteAllTags(std::vector<DataTag> &dataTags)
 	}
 	else
 		return ERROR_FILE_NOT_OPEN;
+}
+
+SerReader::ErrorCode SerReader::WriteDataTag(SerReader::DataTag tag, int setNum) 
+{
+	if(!outFile->is_open())
+		return ERROR_FILE_NOT_OPEN;
+
+	//std::cout << "Writing Tag #" << setNum << " at 0x" << std::hex << tagOffsets[setNum] << std::dec << "\n";
+	
+	outFile->seekp((std::streamoff)tagOffsets[setNum]);
+	outFile->write(reinterpret_cast<char*>(&tag.tagTypeID), 2);
+	outFile->write(reinterpret_cast<char*>(&tag.time), 4);
+	if(header.tagTypeID == 0x4142)
+	{
+		outFile->write(reinterpret_cast<char*>(&tag.positionX), 8);
+		outFile->write(reinterpret_cast<char*>(&tag.positionY), 8);
+	}
+	else if(header.tagTypeID != 0x4152)
+	{
+		return ERROR_UNKNOWN_FILE_VERSION;
+	}
+	// TODO: are the final tags there in version 0x4152?
+	outFile->write(reinterpret_cast<char*>(&tag.weirdFinalTags), 2);
+
+	return ERROR_OK;
 }
 
 int SerReader::WriteAllDataAndTags2D(DataSet2D* &dataSet, DataTag* &dataTags)
@@ -845,6 +924,9 @@ int SerReader::OverwriteData2D(DataSet2D &dataSet, int setNum)
 				}
 				break;
 		}	// end switch statement
+
+		WriteDataTag(dataSet.dataTag, setNum);
+
 	return ERROR_OK;
 	}
 	else

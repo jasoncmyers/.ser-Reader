@@ -20,6 +20,7 @@ private:
 	// binary header structures (need to interact with binary data, so fix the packing at the 16 bit level)
 	#pragma pack(push, 2)
 // TODO: remove this, just here for testing
+//private:
 public:
 	struct BinHeader
 	{
@@ -83,7 +84,8 @@ public:
 	// Data members can belong to 10 different types, including different sizes of (un)signed int, float, and complex float values
 	// This union is memory inefficient but simplifies the data handling code considerably
 	// TODO: when exporting to vectors, this should be handled by type.
-	union DataMember
+public:
+	union DataMemberUnion
 	{
 		unsigned __int32 uIntData;
 		signed __int32 sIntData;
@@ -95,6 +97,15 @@ public:
 		} complexData;
 	};
 
+	struct DataTag
+	{
+		__int16 tagTypeID;
+		float time;
+		double positionX;
+		double positionY;
+		__int16 weirdFinalTags;	// still have no idea what these do
+	};
+	
 	struct DataSet1D
 	{
 		double calOffset;
@@ -102,7 +113,8 @@ public:
 		__int32 calElement;
 		__int16 dataType;
 		__int32 arrayLength;
-		std::vector<DataMember> data;
+		DataTag dataTag;
+		std::vector<DataMemberUnion> data;
 	};
 
 	struct DataSet2D
@@ -116,41 +128,55 @@ public:
 		__int16 dataType;
 		__int32 arraySizeX;
 		__int32 arraySizeY;
-		std::vector<DataMember> data;
+		DataTag dataTag;
+		std::vector<DataMemberUnion> data;
 	};
 
-	struct DataTag
+	// publically accessible class to wrap the various data types
+	class DataSet
 	{
-		__int16 tagTypeID;
-		float time;
-		double positionX;
-		double positionY;
-		__int16 weirdFinalTags;	// still have no idea what these do
+	private:
+		DataTag infoTag;
+		double calOffsetX;
+		double CallOffsetY;
+		__int32 calElementX;
+		double calOffsetY;
+		double calDeltaY;
+		__int32 calElementY;
+		__int16 dataType;
+		__int32 arraySizeX;
+		__int32 arraySizeY;
 	};
 
+//private:
 	std::ifstream* serFile;
 	std::ofstream* outFile;
 	SerHeader header;
 	std::vector<__int64> dataOffsets, tagOffsets;
+	bool outFileHeadersTagsWritten;
 
+	// ReadHeaders and ReadOffsetArrays need to be called in order and with a new file.  They do not seek.
+	// Other commands will seek, but require the offset arrays to be populated first.
 	ErrorCode ReadHeaders();
 	ErrorCode ReadOffsetArrays();
 	ErrorCode ReadDataSet1D(DataSet1D &dataSet, int setNum);
-	int ReadAllDataSets1D(std::vector<DataSet1D> &dataSets);
+	//int ReadAllDataSets1D(std::vector<DataSet1D> &dataSets);
 	ErrorCode ReadDataSet2D(DataSet2D &dataSet, int setNum);
-	int ReadAllDataSets2D(std::vector<DataSet2D> &dataSets);
+	//int ReadAllDataSets2D(std::vector<DataSet2D> &dataSets);
 	int ReadAllTags(std::vector<DataTag> &dataTags);
+	ErrorCode ReadDataTag(DataTag &tag, int setNum);
 
 	int WriteHeaders();
 	int WriteOffsetArray();
 	int WriteAllTags(std::vector<DataTag> &dataTags);
+	ErrorCode WriteDataTag(DataTag tag, int setNum);
 	int WriteAllDataAndTags2D(DataSet2D* &dataSets, DataTag* &dataTags);
 	int OverwriteData2D(DataSet2D &dataSet, int setNum);
 
 public:
 	bool SetReadFile(std::ifstream* file);
 	bool SetWriteFile(std::ofstream* file);
-	std::vector<std::vector<int>> GetImage();
+	//std::vector<std::vector<
 	
 };	// end class SerReader
 

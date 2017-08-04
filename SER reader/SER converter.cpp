@@ -36,7 +36,7 @@ int _tmain(int argc, char* argv[])
 		cout << "File opened\n\n";
 		reader.SetReadFile(&serFile);
 		reader.SetWriteFile(&outFile);
-		reader.ReadHeaders();
+		//reader.ReadHeaders();
 
 		SerReader::SerHeader header = reader.header;
 
@@ -80,10 +80,11 @@ int _tmain(int argc, char* argv[])
 		cin.ignore();
 
 	
-		int test = reader.ReadOffsetArrays();
+		/*int test = reader.ReadOffsetArrays();
 		if(test != 0)
-			cout << "Error with ReadOffsetArrays: " << test << endl;
+			cout << "Error with ReadOffsetArrays: " << test << endl;*/
 
+		int test;
 		for(int i = 0; i < header.totNumElem; i++) {
 			cout << "DataOffset " << dec << i << " = " << hex << reader.dataOffsets[i] << "; TagOffset " << dec << i << " = " << hex << reader.tagOffsets[i] << endl;
 		}
@@ -92,12 +93,13 @@ int _tmain(int argc, char* argv[])
 		cin.ignore();
 
 
-		std::vector<SerReader::DataTag> dataTags;
+		
+		/*std::vector<SerReader::DataTag> dataTags;
 		test = reader.ReadAllTags(dataTags);
 		if(test != 0)
 			cout << "Error with ReadAllTags: " << test << endl;
 
-		for(int i =0; i < dataTags.size(); i++) {
+		for(unsigned int i =0; i < dataTags.size(); i++) {
 			cout << "DataTag " << dec << i << ": \n";
 			cout << "tagTypeID = 0x" << hex << dataTags[i].tagTypeID << dec << "\n";
 			cout << "time = " << dataTags[i].time << "\n";
@@ -106,7 +108,8 @@ int _tmain(int argc, char* argv[])
 		}
 
 		cin.sync();
-		cin.ignore();
+		cin.ignore();*/
+		
 
 		SerReader::DataSet2D dataSet;
 		test = reader.ReadDataSet2D(dataSet, 0);
@@ -120,7 +123,10 @@ int _tmain(int argc, char* argv[])
 		cout << "calElem X: " << dataSet.calElementX << endl;
 		cout << "data type: " << dataSet.dataType << endl;
 		cout << "Array size: (" << dataSet.arraySizeX << ", " << dataSet.arraySizeY << ")\n";
-		
+		cout << "DataTag - tagTypeID = 0x" << hex << dataSet.dataTag.tagTypeID << dec << "\n";
+		cout << "DataTag - time = " << dataSet.dataTag.time << "\n";
+		cout << "DataTag - position = (" << dataSet.dataTag.positionX << ", " << dataSet.dataTag.positionY << ")\n";
+		cout << "DataTag - undocumented final = " << dataSet.dataTag.weirdFinalTags << "\n";		
 		
 		
 		for (int i = 0; i < 5; i++)
@@ -134,22 +140,6 @@ int _tmain(int argc, char* argv[])
 		cin.sync();
 		cin.ignore();
 
-		/*
-		cout << "\n\n* * * Beginning full data readout * * *\n";
-		test = ReadAll2DDataSets(&serFile, header, dataOffs, dataSets);
-		if (test != 0)
-			cout << "Error with ReadAll2DDataSets: " << test << endl;
-		cout << "\n\n* * * Full data readout complete * * *\n\n";
-		
-
-		for(int i = 0; i < header.totNumElem; i++)
-		{
-			cout << "Dataset " << dec << i << " has weird seperator tag 0x" << hex << tags[i].weirdFinalTags << endl;
-		}
-		*/
-
-		
-
 		cout << "\n\n* * * Beginning output of test file * * *\n";
 		test = reader.WriteHeaders();
 		if (test != 0)
@@ -157,10 +147,7 @@ int _tmain(int argc, char* argv[])
 		test = reader.WriteOffsetArray();
 		if (test != 0)
 			cout << "Error with WriteOffsetArray: " << test << endl;
-		test = reader.WriteAllTags(dataTags);
-		if (test != 0)
-			cout << "Error with WriteAllTags: " << test << endl;
-
+		
 
 		for(int i = 0; i < header.validNumElem; i++)
 		{
@@ -172,8 +159,8 @@ int _tmain(int argc, char* argv[])
 			if(i % 50 == 0)
 				cout << "\n\n* * * Beginning modifying pixel intensities of dataset " << dec << i << " * * *\n";
 			
-			int numPoints = dataSet.arraySizeX * dataSet.arraySizeY;
-			/*for(int j = 0; j < numPoints; j++)
+			/*int numPoints = dataSet.arraySizeX * dataSet.arraySizeY;
+			for(int j = 0; j < numPoints; j++)
 			{
 				int tempVal = (__int16)dataSet.data[j].sIntData;
 				if(tempVal < -1000) 
@@ -190,19 +177,6 @@ int _tmain(int argc, char* argv[])
 			else if(eCode != 0)
 				cout << "Overwrite failed on dataset " << i << ": error code " << eCode << "\n";
 		}
-
-
-		// Test writing the data to a new file
-		/*
-		cout << "\n\n* * * Beginning output of test file * * *\n";
-		outFile.open("testout.ser", ios::out | ios::binary);
-
-		
-		test = WriteAll2DDataAndTags(&outFile, header, dataSets, tags);
-		if (test != 0)
-			cout << "Error with WriteAll2DDataAndTags: " << test << endl;
-		cout << "* * * Test file output complete * * *\n\n";
-		*/	
 
 		serFile.close();
 		outFile.close();
